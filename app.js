@@ -111,5 +111,10 @@
   renderSummary();renderHistory();
   $('offline-chip').textContent=navigator.onLine?'LOCAL ONLY':'OFFLINE MODE';
   window.addEventListener('online',()=>$('offline-chip').textContent='LOCAL ONLY');window.addEventListener('offline',()=>$('offline-chip').textContent='OFFLINE MODE');
-  if('serviceWorker' in navigator && window.isSecureContext && location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+  $('environment-status').textContent=`Konteks ${window.isSecureContext?'aman':'tidak aman'} · API gerak ${typeof DeviceMotionEvent==='undefined'?'tidak tersedia':'tersedia (sensor belum diuji)'}`;
+  const pwa=$('pwa-status');
+  if('serviceWorker' in navigator && window.isSecureContext && ['https:','http:'].includes(location.protocol)){
+    pwa.textContent='Menyiapkan cache offline…';
+    navigator.serviceWorker.register('./service-worker.js').then(()=>navigator.serviceWorker.ready).then(()=>{pwa.textContent='Cache aplikasi siap. Uji buka ulang tanpa jaringan; instalasi tetap perlu diperiksa di Chrome.';}).catch(()=>{pwa.textContent='Cache offline gagal disiapkan. Muat ulang saat server lokal/HTTPS berjalan.';});
+  }else pwa.textContent='Cache offline tidak tersedia di konteks ini. Gunakan HTTPS atau server localhost di HP.';
 })();

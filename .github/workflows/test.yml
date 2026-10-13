@@ -17,3 +17,25 @@ jobs:
       - run: node --check analysis.js
       - run: node --check service-worker.js
       - run: node --test tests/*.test.js
+      - run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - run: python3 tools/package_android.py
+      - run: git rev-parse HEAD > dist/medlab-zero-android-test/SOURCE_SHA.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: medlab-zero-android-test
+          path: dist/medlab-zero-android-test/
+          retention-days: 14
+          if-no-files-found: error
+  browser:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node tools/browser-smoke.cjs

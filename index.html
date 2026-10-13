@@ -50,10 +50,12 @@
 
       <section id="method" class="panel" aria-label="Metode">
         <div class="card"><h2>Protokol yang bisa diulang</h2>
+          <div id="environment-status" class="status" role="status"></div>
+          <div id="pwa-status" class="status" role="status"></div>
           <p>Gunakan HP yang sama, posisi serupa, dan kondisi yang dicatat konsisten. Jangan bandingkan angka dari perangkat berbeda sebelum pengujian lintas perangkat.</p>
           <ol><li><strong>Reaction:</strong> letakkan HP stabil; sentuh kotak secepat mungkin setelah berubah hijau. Sentuhan terlalu awal dicatat sebagai false start.</li>
           <li><strong>Tapping:</strong> letakkan HP di meja. Ketuk kotak dengan satu jari selama 15 detik. Gunakan tangan yang sama pada sesi lanjutan.</li>
-          <li><strong>Motion:</strong> pegang HP dengan tangan yang sama pada posisi stabil, duduk dengan lengan didukung. Jangan melakukan manuver untuk memicu tremor. Browser memerlukan HTTPS.</li></ol>
+          <li><strong>Motion:</strong> pegang HP dengan tangan yang sama pada posisi stabil, duduk dengan lengan didukung. Jangan melakukan manuver untuk memicu tremor. Browser memerlukan konteks aman (HTTPS atau localhost).</li></ol>
           <p>Gerakan diukur dari percepatan dinamis; frekuensi dominan dihitung dari data sensor bila laju sampel cukup. Besarnya dipengaruhi cara memegang HP dan sensor.</p>
           <details><summary>Aturan kualitas & baseline</summary><p>Motion Lab menolak data dengan sampel terlalu sedikit atau laju rendah. Semua pengukuran menyimpan metrik, bukan rekaman sensor mentah. Baseline median dan deviasi robust dihitung dari 5–20 sesi valid sebelumnya pada modul sama. Perbedaan terhadap baseline tidak berarti abnormal secara klinis.</p></details>
           <details><summary>Privasi dan batas kemampuan</summary><p>Tidak ada jaringan analitik, akun, cloud, atau API AI berbayar. Riwayat di localStorage browser dapat terhapus saat data situs dibersihkan dan dapat diakses oleh siapa pun yang mengakses profil browser pada perangkat ini. Ekspor CSV/JSON untuk cadangan pribadi. Saat dipasang melalui HTTPS, file aplikasi dapat di-cache agar tetap berjalan offline.</p></details>
