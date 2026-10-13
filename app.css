@@ -4,3 +4,7 @@
 
 .camera-preview{display:block;width:100%;max-width:320px;max-height:180px;object-fit:cover;background:#113d3e;border-radius:12px;margin:12px auto;}
 #camera-cancel{margin:8px 0;}
+
+#reflex-hand{display:block;margin:8px 0 12px;padding:12px;font:inherit;min-width:180px;border-radius:8px;border:1px solid #b8d1c8;background:white;color:#113d3e;}
+.reflex-confirm{display:block;margin:12px 0 18px;line-height:1.6;}
+.reflex-confirm input{width:20px;height:20px;vertical-align:middle;margin-right:8px;}
