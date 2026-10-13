@@ -25,10 +25,9 @@
     // Keep the preview trace in memory; persist/export summary metrics only.
     const {trace,...summary}=metrics;
     const record={id:String(Date.now())+'-'+Math.floor(Math.random()*1e5),ts:Date.now(),type,valid,quality,metrics:summary};
-    history.push(record);if(history.length>500)history=history.slice(-500);
-    let persisted=true;
-    try{localStorage.setItem(STORAGE,JSON.stringify(history));}catch(err){persisted=false;}
-    renderSummary();return persisted;
+    const nextHistory=history.concat(record).slice(-500);
+    try{localStorage.setItem(STORAGE,JSON.stringify(nextHistory));}catch(err){return false;}
+    history=nextHistory;renderSummary();return true;
   }
   function report(type,values,opts={}) {
     const panel=$('workspace-results');panel.classList.remove('hidden');
@@ -49,7 +48,7 @@
     }
     if(msg&&valid){const p=document.createElement('p');p.textContent=msg;panel.appendChild(p);}
     if(type==='tremor'&&state.lastRaw?.length){const canvas=document.createElement('canvas');canvas.width=650;canvas.height=150;canvas.className='chart';canvas.setAttribute('aria-label','Sampel akselerasi dinamis awal');panel.appendChild(canvas);plot(canvas,values.trace||[]);}
-    setStatus(valid?(persisted?'Selesai. Ringkasan tersimpan lokal.':'Hasil tampil, tetapi browser gagal menyimpan ke penyimpanan lokal. Silakan ekspor data.'):'Pengujian belum valid. Ulangi bila diperlukan.');
+    setStatus(valid?(persisted?'Selesai. Ringkasan tersimpan lokal.':'Hasil tampil, tetapi browser gagal menyimpan ke penyimpanan lokal. Hasil ini tidak masuk riwayat, baseline, atau ekspor. Catat hasil sebelum menutup eksperimen.'):'Pengujian belum valid. Ulangi bila diperlukan.');
   }
   function plot(canvas,arr){const ctx=canvas.getContext('2d');const w=canvas.width,h=canvas.height;ctx.clearRect(0,0,w,h);ctx.strokeStyle='#e3ede7';ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();if(!arr.length)return;const max=Math.max(.01,...arr.map(Math.abs));ctx.strokeStyle='#167b66';ctx.lineWidth=2;ctx.beginPath();arr.forEach((v,i)=>{const x=i/(arr.length-1||1)*w,y=h/2-v/max*(h*.4);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();}
   function initReaction(){
@@ -104,7 +103,11 @@
   $('close-exp').addEventListener('click',()=>showPanel('experiments'));
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.run){tearDown();setStatus('Eksperimen dibatalkan karena aplikasi masuk latar belakang. Buka kembali eksperimen untuk mengulang.');}});
   $('export-json').addEventListener('click',exportJSON);$('export-csv').addEventListener('click',exportCSV);
-  $('delete-history').addEventListener('click',()=>{if(confirm('Hapus seluruh riwayat dari browser ini? Tidak dapat dibatalkan.')){history=[];localStorage.removeItem(STORAGE);renderSummary();renderHistory();}});
+  $('delete-history').addEventListener('click',()=>{
+    if(!confirm('Hapus seluruh riwayat dari browser ini? Tidak dapat dibatalkan.'))return;
+    try{localStorage.removeItem(STORAGE);}catch(err){$('history-status').textContent='Gagal menghapus riwayat lokal. Data tetap tersimpan di browser ini. Coba lagi atau hapus data situs melalui pengaturan browser.';return;}
+    history=[];renderSummary();renderHistory();$('history-status').textContent='Riwayat lokal sudah dihapus.';
+  });
   renderSummary();renderHistory();
   $('offline-chip').textContent=navigator.onLine?'LOCAL ONLY':'OFFLINE MODE';
   window.addEventListener('online',()=>$('offline-chip').textContent='LOCAL ONLY');window.addEventListener('offline',()=>$('offline-chip').textContent='OFFLINE MODE');

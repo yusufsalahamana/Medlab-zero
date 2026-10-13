@@ -6,6 +6,8 @@ Imported the existing `medlab-zero-v0.1.zip`, not a reconstruction from conversa
 
 Bootstrap fixes: reset each reaction onset and guard late animation callbacks; prevent delayed motion permission from starting a closed experiment; cancel backgrounded experiments and prevent stale handlers from saving results; keep sensor preview traces out of persisted/exported history; retain the storage-failure message; isolate service-worker cache lookup/deletion to this application.
 
+Audit follow-up (review 5506141042): commit in-memory history only after localStorage succeeds; failed writes leave stored counters, history, baselines and exports unchanged while the result stays visible for manual recording. Delete storage before clearing history; failures retain the data and show an explicit message in the History panel. Regression fixtures reproduce both pre-fix defects and check reload/export, canceled deletion and a successful retry.
+
 ## Executed checks (2026-10-13)
 
 Local runtime: Node v24.19.0. The GitHub workflow uses Node 22; its execution/result must be checked independently at the PR SHA.
@@ -15,9 +17,9 @@ Local runtime: Node v24.19.0. The GitHub workflow uses Node 22; its execution/re
 | `node --check app.js` | PASS | Syntax only |
 | `node --check analysis.js` | PASS | Syntax only |
 | `node --check service-worker.js` | PASS | Syntax only |
-| `node --test tests/*.test.js` | PASS, 16/16 | Six original numerical tests, seven app simulations, three PWA simulations |
+| `node --test tests/*.test.js` | PASS, 18/18 | Six original numerical tests, nine app simulations, three PWA simulations |
 | Manifest / cache asset paths | PASS | Files exist, relative paths resolve under a subpath; simulated offline cached asset |
-| Local save / reload / JSON / CSV / delete | PASS in simulation | Synthetic sessions only; denied storage reports failure |
+| Local save / reload / JSON / CSV / delete | PASS in simulation | Synthetic sessions only; denied writes/deletion preserve previous data and report failure; retry/cancel checked |
 | Sensor absent / insecure / denied / pending permission / zero samples | PASS in simulation | No invented device measurements; pending permission cannot revive a canceled run |
 | Synthetic motion input | PASS | 6 Hz fixture passes basic QC; preview samples/trace absent from stored JSON |
 | UI browser smoke | UNVERIFIED | Playwright launch failed: Chromium executable is not installed; no browser interaction performed |

@@ -41,9 +41,9 @@ function app(options={}) {
   const window={isSecureContext:options.secure!==false,addEventListener:(name,fn)=>windowEvents.set(name,fn),removeEventListener:(name,fn)=>{if(windowEvents.get(name)===fn)windowEvents.delete(name);}};
   function schedule(fn,ms,interval=false){const id=++nextTimer;timers.set(id,{fn,at:now+ms,interval:interval?ms:0});return id;}
   const context={document,window,navigator:{onLine:true},location:{protocol:'https:'},MedMath,
-    Math:Object.assign(Object.create(Math),{random:()=>0}),performance:{now:()=>now},localStorage:{getItem:k=>data.get(k),setItem:(k,v)=>{if(options.storageFails)throw Error('quota');data.set(k,v);},removeItem:k=>data.delete(k)},
+    Math:Object.assign(Object.create(Math),{random:()=>0}),performance:{now:()=>now},localStorage:{getItem:k=>data.get(k),setItem:(k,v)=>{if(options.storageFails)throw Error('quota');data.set(k,v);},removeItem:k=>{if(options.deleteFails)throw Error('denied');data.delete(k);}},
     setTimeout:(fn,ms)=>schedule(fn,ms),setInterval:(fn,ms)=>schedule(fn,ms,true),clearTimeout:id=>timers.delete(id),clearInterval:id=>timers.delete(id),
-    requestAnimationFrame:fn=>frames.push(fn),Blob,URL:{createObjectURL:blob=>{blobs.push(blob);return 'blob:synthetic';},revokeObjectURL(){}},confirm:()=>true};
+    requestAnimationFrame:fn=>frames.push(fn),Blob,URL:{createObjectURL:blob=>{blobs.push(blob);return 'blob:synthetic';},revokeObjectURL(){}},confirm:()=>options.confirmDelete!==false};
   if(options.motion!==undefined)context.DeviceMotionEvent=options.motion;
   vm.runInNewContext(source,context,{filename:'app.js'});
   function advance(ms){const end=now+ms;while(true){const entry=[...timers.entries()].filter(([,t])=>t.at<=end).sort((a,b)=>a[1].at-b[1].at)[0];if(!entry)break;
@@ -93,11 +93,57 @@ test('cancel or background an experiment: no saved result and no timer remains',
   }
 });
 
-test('failed local storage does not report successful persistence',()=>{
-  const a=app({storageFails:true});a.open('tapping');a.click('tapping-start');
+test('failed save preserves persisted history, counters, baseline and exports; retry stores only the new session',async()=>{
+  const prior=Array.from({length:4},(_,i)=>({id:'synthetic-'+i,ts:1000+i,type:'tapping',valid:true,quality:'OK',metrics:{taps:4,tapsPerSec:0.27}}));
+  const options={storageFails:true,storage:{[KEY]:JSON.stringify(prior)}};
+  const a=app(options);
+  for(let attempt=0;attempt<2;attempt++){
+    a.open('tapping');a.click('tapping-start');
+    for(let i=0;i<3;i++){a.advance(200);a.hit('tap-area');}a.advance(15000);
+    assert.match(a.nodes.get('status').textContent,/gagal menyimpan/);
+    assert.deepEqual(a.sessions(),prior);
+    assert.equal(a.nodes.get('total-sessions').textContent,4);
+    assert.equal(a.nodes.get('valid-sessions').textContent,4);
+    assert.equal(a.nodes.get('active-baselines').textContent,0);
+    [...a.nodes.values()].find(e=>e.dataset.panel==='history').click();
+    assert.equal(a.nodes.get('history-items').children.length,4);
+  }
+  a.click('export-json');a.click('export-csv');
+  assert.deepEqual(JSON.parse(await a.blobs[0].text()).sessions,prior);
+  assert.equal((await a.blobs[1].text()).split('\r\n').length,5);
+  const reload=app({storage:Object.fromEntries(a.data)});
+  assert.equal(reload.nodes.get('total-sessions').textContent,4);
+  options.storageFails=false;
+  a.open('tapping');a.click('tapping-start');
   for(let i=0;i<3;i++){a.advance(200);a.hit('tap-area');}a.advance(15000);
-  assert.match(a.nodes.get('status').textContent,/gagal menyimpan/);
-  assert.deepEqual(a.sessions(),[]);
+  assert.equal(a.sessions().length,5);assert.deepEqual(a.sessions().slice(0,4),prior);
+  assert.equal(a.nodes.get('active-baselines').textContent,1);
+  assert.match(a.nodes.get('status').textContent,/tersimpan lokal/);
+});
+
+test('failed deletion keeps stored and displayed history, reports failure in history panel, and can retry',async()=>{
+  const prior=[{id:'synthetic-delete',ts:1000,type:'tapping',valid:true,quality:'OK',metrics:{taps:4,tapsPerSec:0.27}}];
+  const options={deleteFails:true,storage:{[KEY]:JSON.stringify(prior)}};
+  const a=app(options);[...a.nodes.values()].find(e=>e.dataset.panel==='history').click();
+  assert.doesNotThrow(()=>a.click('delete-history'));
+  assert.deepEqual(a.sessions(),prior);
+  assert.equal(a.nodes.get('history-items').children.length,1);
+  assert.equal(a.nodes.get('total-sessions').textContent,1);
+  assert.match(a.nodes.get('history-status').textContent,/Gagal menghapus.*tetap tersimpan/);
+  a.click('export-json');assert.deepEqual(JSON.parse(await a.blobs[0].text()).sessions,prior);
+  const reload=app({storage:Object.fromEntries(a.data)});assert.equal(reload.nodes.get('total-sessions').textContent,1);
+  options.deleteFails=false;a.click('delete-history');
+  assert.deepEqual(a.sessions(),[]);assert.equal(a.data.has(KEY),false);
+  assert.equal(a.nodes.get('total-sessions').textContent,0);
+  assert.match(a.nodes.get('history-status').textContent,/sudah dihapus/);
+  const empty=app({storage:Object.fromEntries(a.data)});assert.equal(empty.nodes.get('total-sessions').textContent,0);
+});
+
+test('canceling deletion preserves history without calling restricted storage',()=>{
+  const prior=[{id:'synthetic-cancel',ts:1000,type:'tapping',valid:true,quality:'OK',metrics:{taps:4,tapsPerSec:0.27}}];
+  const a=app({confirmDelete:false,deleteFails:true,storage:{[KEY]:JSON.stringify(prior)}});
+  assert.doesNotThrow(()=>a.click('delete-history'));
+  assert.deepEqual(a.sessions(),prior);assert.equal(a.nodes.get('total-sessions').textContent,1);
 });
 
 test('motion unavailable, insecure and denied paths never start capture',async()=>{
