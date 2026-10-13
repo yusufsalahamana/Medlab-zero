@@ -7,7 +7,7 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = (
-    "index.html", "app.js", "analysis.js", "app.css", "manifest.webmanifest",
+    "index.html", "app.js", "analysis.js", "pulse.js", "camera.js", "app.css", "manifest.webmanifest",
     "service-worker.js", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png",
 )
 

@@ -41,7 +41,7 @@ function app(options={}) {
   const window={isSecureContext:options.secure!==false,addEventListener:(name,fn)=>windowEvents.set(name,fn),removeEventListener:(name,fn)=>{if(windowEvents.get(name)===fn)windowEvents.delete(name);}};
   function schedule(fn,ms,interval=false){const id=++nextTimer;timers.set(id,{fn,at:now+ms,interval:interval?ms:0});return id;}
   const navigator={onLine:true};if(options.serviceWorker)navigator.serviceWorker=options.serviceWorker;
-  const context={document,window,navigator,location:{protocol:options.protocol||'https:'},MedMath,
+  const context={document,window,navigator,location:{protocol:options.protocol||'https:'},MedMath,MedPulse:require('../pulse.js'),MedCamera:options.camera,
     Math:Object.assign(Object.create(Math),{random:()=>0}),performance:{now:()=>now},localStorage:{getItem:k=>data.get(k),setItem:(k,v)=>{if(options.storageFails)throw Error('quota');data.set(k,v);},removeItem:k=>{if(options.deleteFails)throw Error('denied');data.delete(k);}},
     setTimeout:(fn,ms)=>schedule(fn,ms),setInterval:(fn,ms)=>schedule(fn,ms,true),clearTimeout:id=>timers.delete(id),clearInterval:id=>timers.delete(id),
     requestAnimationFrame:fn=>frames.push(fn),Blob,URL:{createObjectURL:blob=>{blobs.push(blob);return 'blob:synthetic';},revokeObjectURL(){}},confirm:()=>options.confirmDelete!==false};
@@ -186,4 +186,20 @@ test('PWA registration failure is visible and cannot claim offline readiness',as
   const a=app({serviceWorker:{register:async()=>{throw Error('blocked');}}});
   await new Promise(resolve=>setImmediate(resolve));
   assert.match(a.nodes.get('pwa-status').textContent,/gagal disiapkan/);
+});
+
+
+test('camera UI candidate/rejection is transient; navigation and background stop capture',async()=>{
+  for(const valid of [true,false]){
+    let handlers,stops=0;
+    const camera={Capture:class {constructor(){this.stream=null;}stop(){stops++;this.stream=null;}start(callbacks){handlers=callbacks;this.stream={};}}};
+    const a=app({camera});a.open('pulse');a.click('camera-start');
+    handlers.result({valid,candidateBpm:90,trace:[0,1,0,-1],reason:'Sinyal datar'});
+    assert.equal(a.nodes.get('workspace-results').children[0].textContent,valid?'Experimental candidate pulse':'Data tidak mencukupi');
+    assert.deepEqual(a.sessions(),[]);assert.equal(a.nodes.get('total-sessions').textContent,0);
+    a.click('export-json');assert.deepEqual(JSON.parse(await a.blobs[0].text()).sessions,[]);
+    a.click('camera-start');a.click('camera-cancel');assert.equal(stops,1);assert.match(a.nodes.get('status').textContent,/dibatalkan/);
+    a.click('camera-start');a.background();assert.equal(stops,2);
+    handlers.result({valid:true,candidateBpm:90,trace:[]});assert.deepEqual(a.sessions(),[]);
+  }
 });

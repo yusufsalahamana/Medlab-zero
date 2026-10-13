@@ -3,10 +3,10 @@
   'use strict';
   const STORAGE='medlabzero.sessions.v1';
   const $=id=>document.getElementById(id);
-  const labels={reaction:'Reaction Time',tapping:'Finger Tapping',tremor:'Motion Lab'};
+  const labels={reaction:'Reaction Time',tapping:'Finger Tapping',tremor:'Motion Lab',pulse:'Camera Pulse Lab'};
   const primary={reaction:'medianMs',tapping:'tapsPerSec',tremor:'rmsMps2'};
   const fmt=(x,n=1)=>Number.isFinite(x)?Number(x).toFixed(n):'—';
-  const state={run:null, timers:[],motionListener:null,lastRaw:null};
+  const state={run:null, timers:[],motionListener:null,lastRaw:null,camera:null};
   let history=[];
   try { history=JSON.parse(localStorage.getItem(STORAGE)||'[]'); if(!Array.isArray(history))history=[]; }
   catch(err) { history=[]; }
@@ -14,12 +14,12 @@
   function later(fn,ms){const t=setTimeout(fn,ms);state.timers.push(t);return t;}
   function repeat(fn,ms){const t=setInterval(fn,ms);state.timers.push({interval:t});return t;}
   function clearTimers(){for(const t of state.timers){if(typeof t==='object')clearInterval(t.interval);else clearTimeout(t);}state.timers=[];}
-  function tearDown(){clearTimers();if(state.motionListener)window.removeEventListener('devicemotion',state.motionListener);state.motionListener=null;state.run=null;}
+  function tearDown(){if(state.camera)state.camera.stop();state.camera=null;clearTimers();if(state.motionListener)window.removeEventListener('devicemotion',state.motionListener);state.motionListener=null;state.run=null;}
   function setHTML(node,html){node.innerHTML=html;}
   function metric(k,v){return `<div class="metric"><span>${v}</span><small>${k}</small></div>`;}
   function showPanel(name){document.querySelectorAll('.panel').forEach(el=>el.classList.toggle('active',el.id===name));document.querySelectorAll('.tab').forEach(el=>{const active=el.dataset.panel===name;el.classList.toggle('active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});$('workspace').classList.add('hidden');tearDown();if(name==='history')renderHistory();}
-  function open(type){showPanel('experiments');$('workspace').classList.remove('hidden');$('exp-label').textContent=type.toUpperCase()+' · V0.1';$('workspace-title').textContent=labels[type];$('workspace-results').classList.add('hidden');$('workspace-results').replaceChildren();$('workspace-content').replaceChildren();state.lastRaw=null;
-    const text={reaction:'Selesaikan lima percobaan. Sentuh hanya ketika bidang berubah hijau. Jangan mencoba memprediksi waktunya.',tapping:'Letakkan HP di meja. Ketuk bidang dengan satu jari selama 15 detik sejak tombol mulai ditekan.',tremor:'Pegang HP secara konsisten sambil duduk dengan lengan ditopang. Rekam percepatan selama 12 detik tanpa melakukan gerakan yang dipaksakan.'};$('workspace-instruction').textContent=text[type];setStatus('Siap memulai.');if(type==='reaction')initReaction();if(type==='tapping')initTapping();if(type==='tremor')initTremor();$('workspace').scrollIntoView({behavior:'smooth',block:'start'});
+  function open(type){showPanel('experiments');$('workspace').classList.remove('hidden');$('exp-label').textContent=type.toUpperCase()+(type==='pulse'?' · M1 EKSPERIMENTAL':' · V0.1');$('workspace-title').textContent=labels[type];$('workspace-results').classList.add('hidden');$('workspace-results').replaceChildren();$('workspace-content').replaceChildren();state.lastRaw=null;
+    const text={reaction:'Selesaikan lima percobaan. Sentuh hanya ketika bidang berubah hijau. Jangan mencoba memprediksi waktunya.',tapping:'Letakkan HP di meja. Ketuk bidang dengan satu jari selama 15 detik sejak tombol mulai ditekan.',tremor:'Pegang HP secara konsisten sambil duduk dengan lengan ditopang. Rekam percepatan selama 12 detik tanpa melakukan gerakan yang dipaksakan.',pulse:'Tutupi kamera belakang dengan ujung jari secara lembut, jangan ditekan kuat. Duduk tenang selama 25 detik. Jika lampu terasa panas, batalkan. Gelombang dan kandidat optik belum tervalidasi sebagai denyut jantung.'};$('workspace-instruction').textContent=text[type];setStatus('Siap memulai.');if(type==='reaction')initReaction();if(type==='tapping')initTapping();if(type==='tremor')initTremor();if(type==='pulse')initPulse();$('workspace').scrollIntoView({behavior:'smooth',block:'start'});
   }
   function save(type,metrics,valid=true,quality='OK'){
     // Keep the preview trace in memory; persist/export summary metrics only.
@@ -87,13 +87,38 @@
       function finish(){if(state.run!==run||run.done)return;run.done=true;clearTimers();window.removeEventListener('devicemotion',state.motionListener);state.motionListener=null;$('motion-timer').textContent='0.0';$('motion-target').className='target finished';$('motion-target').textContent='Selesai ✓';const result=MedMath.tremor(run.samples);state.lastRaw=run.samples;report('tremor',result,{valid:result.valid,msg:result.reason||'Frekuensi dominan adalah fitur spektral, bukan diagnosis tremor.'});}
     });
   }
+  function initPulse(){
+    setHTML($('workspace-content'),'<button class="action" id="camera-start">Izinkan kamera & rekam 25 detik</button><button class="outline" id="camera-cancel">Batalkan kamera</button><div class="timer" id="camera-timer">25.0</div><video id="camera-video" class="camera-preview" muted playsinline aria-label="Pratinjau kamera lokal"></video><canvas id="camera-roi" width="32" height="32" hidden></canvas><p id="camera-progress" class="subdued"></p><p class="subdued">Frame dan gelombang hanya di memori; tidak masuk riwayat, baseline, ekspor, atau unggahan. Dukungan kamera/lampu dan akurasi Android belum diuji.</p>');
+    const run={type:'pulse',busy:false};state.run=run;
+    const start=$('camera-start');
+    const capture=new MedCamera.Capture({video:$('camera-video'),canvas:$('camera-roi'),media:navigator.mediaDevices,secure:window.isSecureContext,pulse:MedPulse});
+    state.camera=capture;
+    function cancel(){capture.stop();run.busy=false;start.disabled=false;$('camera-timer').textContent='25.0';$('camera-progress').textContent='';$('workspace-results').replaceChildren();$('workspace-results').classList.add('hidden');setStatus('Kamera dibatalkan. Data tidak disimpan.');}
+    $('camera-cancel').addEventListener('click',()=>{if(state.run===run)cancel();});
+    start.addEventListener('click',()=>{
+      if(state.run!==run||run.busy)return;
+      run.busy=true;start.disabled=true;$('workspace-results').replaceChildren();$('workspace-results').classList.add('hidden');$('camera-timer').textContent='25.0';$('camera-progress').textContent='';
+      capture.start({
+        status:message=>{if(state.run!==run)return;setStatus(message);if(!capture.stream&&!message.startsWith('Meminta')){run.busy=false;start.disabled=false;}},
+        progress:(elapsed,count)=>{if(state.run!==run)return;$('camera-timer').textContent=fmt(25-elapsed,1);$('camera-progress').textContent=count+' frame unik · tetap tenang';},
+        result:answer=>{if(state.run!==run)return;run.busy=false;start.disabled=false;$('camera-timer').textContent='0.0';
+          const panel=$('workspace-results');panel.classList.remove('hidden');
+          const title=document.createElement('h3');title.textContent=answer.valid?'Experimental candidate pulse':'Data tidak mencukupi';panel.appendChild(title);
+          const detail=document.createElement('p');detail.textContent=answer.valid?fmt(answer.candidateBpm,1)+' kandidat/menit · pola optik 45–180/menit; bukan nilai medis atau denyut tervalidasi.':answer.reason;panel.appendChild(detail);
+          if(answer.valid){const canvas=document.createElement('canvas');canvas.width=650;canvas.height=150;canvas.className='chart';canvas.setAttribute('aria-label','Gelombang optik terfilter, skala relatif');panel.appendChild(canvas);plot(canvas,answer.trace);}
+          const note=document.createElement('p');note.textContent='QC hanya menguji kualitas dan keterulangan optik. Gerakan/pencahayaan periodik dapat menyerupai denyut. Tidak untuk diagnosis, keputusan klinis, atau kepastian kesehatan. Hasil tidak disimpan.';panel.appendChild(note);
+          setStatus(answer.valid?'Selesai. Kandidat optik hanya tampil sementara; tidak disimpan.':'Data tidak mencukupi. Tidak ada kandidat denyut; tidak disimpan.');
+        }
+      });
+    });
+  }
   function download(name,content,mime){const url=URL.createObjectURL(new Blob([content],{type:mime}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);}
   function exportJSON(){download('medlab-zero-history.json',JSON.stringify({schema:1,generated:new Date().toISOString(),sessions:history},null,2),'application/json');}
   function escapeCSV(v){const value=String(v??'');return '"'+value.replace(/"/g,'""')+'"';}
   function exportCSV(){const keys=['timestamp','type','valid','quality','medianMs','madMs','falseStarts','taps','tapsPerSec','medianIntervalMs','intervalCv','sampleCount','sampleRateHz','rmsMps2','dominantHz'];const lines=[keys.join(',')];for(const r of history){const values={timestamp:new Date(r.ts).toISOString(),type:r.type,valid:r.valid,quality:r.quality,...r.metrics};lines.push(keys.map(k=>escapeCSV(values[k])).join(','));}download('medlab-zero-history.csv',lines.join('\r\n'),'text/csv;charset=utf-8');}
   function renderSummary(){
     $('total-sessions').textContent=history.length;$('valid-sessions').textContent=history.filter(r=>r.valid).length;
-    $('active-baselines').textContent=Object.keys(labels).filter(type=>MedMath.baseline(history,type,primary[type]).ready).length;
+    $('active-baselines').textContent=Object.keys(primary).filter(type=>MedMath.baseline(history,type,primary[type]).ready).length;
   }
   function renderHistory(){const node=$('history-items');node.replaceChildren();if(!history.length){const p=document.createElement('div');p.className='empty';p.textContent='Belum ada sesi. Jalankan eksperimen pertama.';node.appendChild(p);return;}
     for(const r of history.slice(-60).reverse()){const div=document.createElement('div');div.className='hist';const v=r.metrics[primary[r.type]],unit=r.type==='reaction'?' ms':r.type==='tapping'?' ketuk/dtk':' m/s²';const title=document.createElement('div');title.className='hist-head';const name=document.createElement('span');name.className='hist-name';name.textContent=labels[r.type]||r.type;const date=document.createElement('span');date.className='hist-meta';date.textContent=new Date(r.ts).toLocaleString('id-ID');title.append(name,date);const number=document.createElement('div');number.className='hist-value';number.textContent=fmt(v,r.type==='reaction'?0:r.type==='tapping'?2:3)+unit;const foot=document.createElement('div');foot.className='hist-foot';foot.textContent=r.valid?'Lulus QC dasar · bukan nilai medis':'Tidak valid';div.append(title,number,foot);node.appendChild(div);}
@@ -102,6 +127,7 @@
   document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>open(b.dataset.open)));
   $('close-exp').addEventListener('click',()=>showPanel('experiments'));
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.run){tearDown();setStatus('Eksperimen dibatalkan karena aplikasi masuk latar belakang. Buka kembali eksperimen untuk mengulang.');}});
+  window.addEventListener('pagehide',tearDown);
   $('export-json').addEventListener('click',exportJSON);$('export-csv').addEventListener('click',exportCSV);
   $('delete-history').addEventListener('click',()=>{
     if(!confirm('Hapus seluruh riwayat dari browser ini? Tidak dapat dibatalkan.'))return;
