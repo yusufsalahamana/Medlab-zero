@@ -12,7 +12,7 @@
 ## Prototype v0.1
 Source imported from the existing `medlab-zero-v0.1.zip`: five-trial reaction time, 15-second finger tapping, 12-second motion capture with basic QC, personal statistical baseline, local history and JSON/CSV export. No trained AI model or clinical interpretation is implemented. Camera/PPG is not implemented in M0.
 
-Open `index.html` for reaction/tapping, or serve this folder locally with `python3 -m http.server 8000`. Motion availability requires a secure context, browser support and permission. PWA caching is registered on HTTPS; installation and actual offline use on Android remain unverified. Hosting must follow the approval policy below.
+Open `index.html` for reaction/tapping, or run `python3 tools/serve.py` and open `http://127.0.0.1:8765/` on the same device. Motion availability requires a secure context, browser support and permission. PWA caching is registered on secure localhost HTTP or HTTPS; installation and actual offline use on Android remain unverified. See the [private Android test path](docs/ANDROID_TEST_PATH.md). Hosting must follow the approval policy below.
 
 ```bash
 node --check app.js

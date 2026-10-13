@@ -37,10 +37,10 @@ The Node DOM/event and Cache API harnesses are deliberately small simulations, n
 
 ## Future Android test card (Issue #3)
 
-Use only after a Director-approved HTTPS path is available. Report browser/device version and PASS/FAIL observations; do not upload personal measurements or raw recordings to GitHub.
+Use the [private localhost phone setup](ANDROID_TEST_PATH.md), or a Director-approved HTTPS path. Report browser/device version and PASS/FAIL observations; do not upload personal measurements or raw recordings to GitHub. Issue #2 evidence above remains historical; check Issue #3 PR/CI for subsequent tooling results.
 
 1. Run five reaction trials (including an early touch), then tapping for 15 seconds. Check results, local reload, JSON/CSV download and deletion. Background a running test: it must cancel without saving.
 2. Run Motion Lab for 12 seconds. Check permission refusal/unavailability where possible; successful capture must show actual sample count/rate, while unavailable or insufficient samples must remain invalid. Close while a permission prompt is pending: granting afterward must not start capture.
-3. Load over HTTPS, attempt installation, reopen in airplane mode and repeat reaction/tapping; check offline assets and local history. Record installation/offline failures honestly.
+3. Load in the secure context, wait for the cache-ready message in Metode, attempt installation, reopen in airplane mode and repeat reaction/tapping; check offline assets and local history. Also stop the localhost server before reopening to isolate cached behavior. Record installation/offline failures honestly.
 
 This card is pending, not an instruction to publish the repository. Public release is not authorized. Independent Auditor review and Director acceptance/merge remain required.

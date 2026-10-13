@@ -40,7 +40,8 @@ function app(options={}) {
     addEventListener:(name,fn)=>documentEvents.set(name,fn)};
   const window={isSecureContext:options.secure!==false,addEventListener:(name,fn)=>windowEvents.set(name,fn),removeEventListener:(name,fn)=>{if(windowEvents.get(name)===fn)windowEvents.delete(name);}};
   function schedule(fn,ms,interval=false){const id=++nextTimer;timers.set(id,{fn,at:now+ms,interval:interval?ms:0});return id;}
-  const context={document,window,navigator:{onLine:true},location:{protocol:'https:'},MedMath,
+  const navigator={onLine:true};if(options.serviceWorker)navigator.serviceWorker=options.serviceWorker;
+  const context={document,window,navigator,location:{protocol:options.protocol||'https:'},MedMath,
     Math:Object.assign(Object.create(Math),{random:()=>0}),performance:{now:()=>now},localStorage:{getItem:k=>data.get(k),setItem:(k,v)=>{if(options.storageFails)throw Error('quota');data.set(k,v);},removeItem:k=>{if(options.deleteFails)throw Error('denied');data.delete(k);}},
     setTimeout:(fn,ms)=>schedule(fn,ms),setInterval:(fn,ms)=>schedule(fn,ms,true),clearTimeout:id=>timers.delete(id),clearInterval:id=>timers.delete(id),
     requestAnimationFrame:fn=>frames.push(fn),Blob,URL:{createObjectURL:blob=>{blobs.push(blob);return 'blob:synthetic';},revokeObjectURL(){}},confirm:()=>options.confirmDelete!==false};
@@ -169,4 +170,20 @@ test('motion without samples is rejected; synthetic valid motion stores/exports 
   const record=a.sessions()[0];assert.equal(record.valid,true);assert.equal(record.metrics.dominantHz,6);
   assert.equal('trace' in record.metrics,false);assert.equal('samples' in record.metrics,false);
   a.click('export-json');assert.doesNotMatch(await a.blobs[0].text(),/"trace"|"samples"/);
+});
+
+test('PWA registers on secure HTTPS/loopback HTTP, but not file URLs or insecure HTTP',async()=>{
+  for(const [protocol,secure,expected] of [['https:',true,1],['http:',true,1],['http:',false,0],['file:',true,0]]){
+    let calls=0;
+    const a=app({protocol,secure,serviceWorker:{register:async()=>{calls++;},ready:Promise.resolve({})}});
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(calls,expected);
+    assert.match(a.nodes.get('pwa-status').textContent,expected?/Cache aplikasi siap/:/tidak tersedia/);
+  }
+});
+
+test('PWA registration failure is visible and cannot claim offline readiness',async()=>{
+  const a=app({serviceWorker:{register:async()=>{throw Error('blocked');}}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(a.nodes.get('pwa-status').textContent,/gagal disiapkan/);
 });
