@@ -9,7 +9,7 @@ function worker(){
   const cache={addAll:async list=>{assets=list;for(const p of list)entries.set(new URL(p,'https://example.test/lab/').href,{asset:p});},match:async req=>entries.get(req.url)};
   vm.runInNewContext(fs.readFileSync(path.join(root,'service-worker.js'),'utf8'),{
     self:{location:{origin:'https://example.test'},addEventListener:(k,f)=>events[k]=f,skipWaiting:async()=>{},clients:{claim:async()=>{}}},URL,
-    caches:{open:async()=>cache,keys:async()=>['unrelated-app','medlab-zero-old','medlab-zero-v03-reflexprint'],delete:async k=>deleted.push(k)},
+    caches:{open:async()=>cache,keys:async()=>['unrelated-app','medlab-zero-old','medlab-zero-v04-device-check'],delete:async k=>deleted.push(k)},
     fetch:async req=>{network.push(req.url);return {fromNetwork:true};}
   });
   return {events,deleted,network,assets:()=>assets};
@@ -27,7 +27,8 @@ test('manifest and all precached assets resolve under a subpath',async()=>{
   }
   const w=worker();let done;w.events.install({waitUntil:p=>done=p});await done;
   for(const p of w.assets())assert.ok(fs.existsSync(path.join(root,p)),p);
-  for(const asset of ['analysis.js','pulse.js','camera.js','reflex.js'])assert.ok(w.assets().includes('./'+asset));
+  assert.deepEqual(Array.from(w.assets()),require('../device-check.js').ASSETS);
+  for(const asset of ['analysis.js','pulse.js','camera.js','reflex.js','device-check.js'])assert.ok(w.assets().includes('./'+asset));
 });
 test('activation removes only obsolete MED-LAB ZERO caches',async()=>{
   const w=worker();let done;w.events.activate({waitUntil:p=>done=p});await done;

@@ -13,7 +13,7 @@
 <body>
   <div class="shell">
     <header class="top">
-      <div class="brand"><span class="logo" aria-hidden="true">∿</span><span><strong>MED-LAB <b>ZERO</b></strong><small>Personal signal research · v0.3</small></span></div>
+      <div class="brand"><span class="logo" aria-hidden="true">∿</span><span><strong>MED-LAB <b>ZERO</b></strong><small>Personal signal research · v0.4</small></span></div>
       <span class="chip" id="offline-chip">LOCAL ONLY</span>
     </header>
     <main>
@@ -51,6 +51,19 @@
       </section>
 
       <section id="method" class="panel" aria-label="Metode">
+        <div class="card"><h2>Periksa perangkat (opsional)</h2>
+          <p>API tersedia, izin diberikan, sampel diterima dan cache siap adalah hal berbeda. Semua status di bawah hanya observasi browser saat probe; pengujian fisik Android, instalasi/offline relaunch dan akurasi tetap belum terverifikasi.</p>
+          <div class="button-row"><button id="device-refresh" class="outline">Periksa perangkat & cache</button><button id="device-motion" class="outline">Uji sensor 3 detik</button><button id="device-camera" class="outline">Uji akses kamera belakang</button><button id="device-cancel" class="outline">Batalkan probe</button></div>
+          <dl class="device-status" aria-live="polite">
+            <dt>HTTPS/konteks aman</dt><dd id="device-secure"></dd><dt>API gerak</dt><dd id="device-motion-api"></dd><dt>Izin gerak</dt><dd id="device-permission"></dd><dt>Sampel gerak</dt><dd id="device-samples"></dd><dt>API kamera</dt><dd id="device-camera-api"></dd><dt>Akses kamera</dt><dd id="device-camera-access"></dd><dt>Arah kamera</dt><dd id="device-rear"></dd><dt>Worker & cache aset</dt><dd id="device-cache"></dd><dt>Jaringan</dt><dd id="device-network"></dd>
+          </dl>
+          <details><summary>Kartu uji Android opsional · tanpa mengunggah data</summary><ol>
+            <li>Jalankan Reaksi dan Ketukan, muat ulang Riwayat. Coba ReflexPrint: sesi lengkap lolos QC atau penolakan yang jujur; sesi dibatalkan tidak boleh tersimpan.</li>
+            <li>Tap uji sensor: bedakan izin dan sampel. Coba Motion Lab; ketersediaan event bukan akurasi sensor.</li>
+            <li>Coba menolak izin kamera, lalu coba akses/cancel Camera Pulse Lab. Setelah tutup/batal, indikator kamera harus padam. Batalkan bila lampu terasa panas.</li>
+            <li>Setelah CACHE_READY, aktifkan mode pesawat, tutup/buka ulang Chrome ke URL yang sama. Instalasi dari tawaran Chrome diuji terpisah; shortcut bukan bukti WebAPK.</li>
+          </ol><p>Laporkan hanya model HP + versi Chrome + PASS/FAIL/UNSUPPORTED per tindakan + teks error. Jangan kirim nilai fisiologis, foto/screenshot, gelombang atau file ekspor. Probe tidak menyimpan hasil atau mengirim telemetry.</p></details>
+        </div>
         <div class="card"><h2>Protokol yang bisa diulang</h2>
           <div id="environment-status" class="status" role="status"></div>
           <div id="pwa-status" class="status" role="status"></div>
@@ -78,6 +91,7 @@
   <script src="./reflex.js"></script>
   <script src="./pulse.js"></script>
   <script src="./camera.js"></script>
+  <script src="./device-check.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

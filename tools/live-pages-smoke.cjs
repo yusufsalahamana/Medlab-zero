@@ -12,7 +12,7 @@ const base='https://yusufsalahamana.github.io/Medlab-zero/';
     const response=await page.goto(base,{waitUntil:'networkidle',timeout:45000});
     assert.equal(response.status(),200);assert.equal(await page.evaluate(()=>window.isSecureContext),true);
     await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
-    await page.waitForFunction(()=>document.getElementById('pwa-status').textContent.includes('Cache aplikasi siap'));
+    await page.waitForFunction(()=>/Cache aplikasi siap|Worker aplikasi aktif/.test(document.getElementById('pwa-status').textContent));
     // Browser request context verifies deployed root-relative assets, not local copies.
     const assets=await page.evaluate(()=>[...document.querySelectorAll('script[src],link[href]')].map(e=>e.src||e.href));
     assets.push(base+'service-worker.js');
