@@ -6,7 +6,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
   class Capture {
-    constructor({video,canvas,media,secure,pulse,setTimer=setTimeout,clearTimer=clearTimeout,raf=requestAnimationFrame,caf=cancelAnimationFrame}){
+    constructor({video,canvas,media,secure,pulse,setTimer=(fn,ms)=>setTimeout(fn,ms),clearTimer=id=>clearTimeout(id),raf=fn=>requestAnimationFrame(fn),caf=id=>cancelAnimationFrame(id)}){
       Object.assign(this,{video,canvas,media,secure,pulse,setTimer,clearTimer,raf,caf});
       this.generation=0;this.stream=null;this.frame=null;this.timer=null;this.samples=[];
     }

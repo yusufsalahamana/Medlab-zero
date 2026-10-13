@@ -16,7 +16,7 @@ const timeout=setTimeout(()=>{console.error('Browser smoke timed out');server.ki
   browser=await chromium.launch({headless:true});
   const context=await browser.newContext({viewport:{width:412,height:915},isMobile:true,hasTouch:true});
   const page=await context.newPage(),errors=[],external=[];
-  page.on('pageerror',e=>errors.push(e.message));
+  page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE ERROR:',e.message);});
   page.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('blob:'))external.push(r.url());});
   await page.goto(base);
   assert.equal(await page.evaluate(()=>window.isSecureContext),true);
@@ -43,7 +43,7 @@ const timeout=setTimeout(()=>{console.error('Browser smoke timed out');server.ki
   await page.locator('[data-open="pulse"]').click();
   await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('synthetic denial','NotAllowedError');};});
   await page.locator('#camera-start').click();
-  await page.waitForFunction(()=>document.getElementById('status').textContent.includes('ditolak'));
+  await page.waitForFunction(()=>document.getElementById('status').textContent.includes('ditolak'),{},{timeout:5000}).catch(async e=>{console.error('CAMERA STATUS:',await page.locator('#status').textContent());throw e;});
   assert.equal(await page.locator('#camera-start').isEnabled(),true);
   await page.evaluate(()=>{
     const source=document.createElement('canvas');source.width=64;source.height=64;const ctx=source.getContext('2d');const start=performance.now();
@@ -52,7 +52,7 @@ const timeout=setTimeout(()=>{console.error('Browser smoke timed out');server.ki
     navigator.mediaDevices.getUserMedia=async()=>source.captureStream(30);
   });
   await page.locator('#camera-start').click();
-  await page.waitForFunction(()=>document.getElementById('workspace-results').textContent.includes('Experimental candidate pulse'),{},{timeout:35000});
+  await page.waitForFunction(()=>document.getElementById('workspace-results').textContent.includes('Experimental candidate pulse'),{},{timeout:35000}).catch(async e=>{console.error('CAMERA STATUS:',await page.locator('#status').textContent(),'RESULT:',await page.locator('#workspace-results').textContent());throw e;});
   const candidate=Number((await page.locator('#workspace-results').textContent()).match(/([0-9]+\.[0-9]) kandidat/)[1]);assert.ok(Math.abs(candidate-90)<2,candidate);
   assert.equal(await page.evaluate(()=>document.getElementById('camera-video').srcObject),null);
   assert.equal(await page.locator('#total-sessions').textContent(),'2');
