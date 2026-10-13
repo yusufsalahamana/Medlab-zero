@@ -13,14 +13,14 @@
 <body>
   <div class="shell">
     <header class="top">
-      <div class="brand"><span class="logo" aria-hidden="true">∿</span><span><strong>MED-LAB <b>ZERO</b></strong><small>Personal signal research · v0.1</small></span></div>
+      <div class="brand"><span class="logo" aria-hidden="true">∿</span><span><strong>MED-LAB <b>ZERO</b></strong><small>Personal signal research · v0.2</small></span></div>
       <span class="chip" id="offline-chip">LOCAL ONLY</span>
     </header>
     <main>
       <section class="intro card">
         <p class="eyebrow">LABORATORIUM HP ANDROID · MODAL RP0</p>
         <h1>Ukur sinyal.<br><em>Uji hipotesis.</em></h1>
-        <p>Eksperimen fungsi motorik dan respons menggunakan HP saja. Semua data disimpan lokal di browser ini, tanpa akun atau server.</p>
+        <p>Eksperimen fungsi motorik dan respons menggunakan HP saja. Ringkasan motorik disimpan lokal; kamera hanya di memori, tanpa akun atau unggahan.</p>
         <div class="notice"><strong>Alat riset, bukan alat diagnosis.</strong> Jangan gunakan angka di aplikasi ini untuk memastikan penyakit, menunda pemeriksaan, atau mengubah pengobatan.</div>
         <div class="summary"><div><span id="total-sessions">0</span><small>Sesi tersimpan</small></div><div><span id="valid-sessions">0</span><small>Sesi lolos QC</small></div><div><span id="active-baselines">0</span><small>Baseline tersedia</small></div></div>
       </section>
@@ -36,6 +36,7 @@
           <button class="experiment-card" data-open="reaction"><span class="exp-icon">◎</span><span class="exp-title">Reaction Time</span><span class="exp-desc">5 percobaan acak · latensi sentuh</span><span class="exp-arrow">Mulai →</span></button>
           <button class="experiment-card" data-open="tapping"><span class="exp-icon">▦</span><span class="exp-title">Finger Tapping</span><span class="exp-desc">15 detik · ritme dan konsistensi</span><span class="exp-arrow">Mulai →</span></button>
           <button class="experiment-card" data-open="tremor"><span class="exp-icon">∿</span><span class="exp-title">Motion Lab</span><span class="exp-desc">12 detik · akselerasi dan spektrum</span><span class="exp-arrow">Mulai →</span></button>
+          <button class="experiment-card" data-open="pulse"><span class="exp-icon">◉</span><span class="exp-title">Camera Pulse Lab</span><span class="exp-desc">25 detik · kandidat optik eksperimental</span><span class="exp-arrow">Mulai →</span></button>
         </div>
         <div class="card info"><h2>Riset statistik personal</h2><p>Setelah sedikitnya 5 sesi valid pada eksperimen yang sama, aplikasi dapat membandingkan hasil terbaru terhadap median dan MAD sesi sebelumnya. Perubahan statistik bukan indikator penyakit.</p></div>
       </section>
@@ -55,9 +56,9 @@
           <p>Gunakan HP yang sama, posisi serupa, dan kondisi yang dicatat konsisten. Jangan bandingkan angka dari perangkat berbeda sebelum pengujian lintas perangkat.</p>
           <ol><li><strong>Reaction:</strong> letakkan HP stabil; sentuh kotak secepat mungkin setelah berubah hijau. Sentuhan terlalu awal dicatat sebagai false start.</li>
           <li><strong>Tapping:</strong> letakkan HP di meja. Ketuk kotak dengan satu jari selama 15 detik. Gunakan tangan yang sama pada sesi lanjutan.</li>
-          <li><strong>Motion:</strong> pegang HP dengan tangan yang sama pada posisi stabil, duduk dengan lengan didukung. Jangan melakukan manuver untuk memicu tremor. Browser memerlukan konteks aman (HTTPS atau localhost).</li></ol>
+          <li><strong>Motion:</strong> pegang HP dengan tangan yang sama pada posisi stabil, duduk dengan lengan didukung. Jangan melakukan manuver untuk memicu tremor. Browser memerlukan konteks aman (HTTPS atau localhost).</li><li><strong>Camera:</strong> ujung jari menutup kamera belakang secara lembut selama 25 detik, tanpa tekanan kuat. Lampu opsional jika didukung; batalkan bila terasa panas. QC menolak sinyal buruk, tetapi pola periodik bukan bukti denyut jantung.</li></ol>
           <p>Gerakan diukur dari percepatan dinamis; frekuensi dominan dihitung dari data sensor bila laju sampel cukup. Besarnya dipengaruhi cara memegang HP dan sensor.</p>
-          <details><summary>Aturan kualitas & baseline</summary><p>Motion Lab menolak data dengan sampel terlalu sedikit atau laju rendah. Semua pengukuran menyimpan metrik, bukan rekaman sensor mentah. Baseline median dan deviasi robust dihitung dari 5–20 sesi valid sebelumnya pada modul sama. Perbedaan terhadap baseline tidak berarti abnormal secara klinis.</p></details>
+          <details><summary>Aturan kualitas & baseline</summary><p>Motion Lab menolak data dengan sampel terlalu sedikit atau laju rendah. Modul motorik menyimpan metrik, bukan rekaman sensor mentah. Camera Pulse Lab tidak menyimpan frame, gelombang, atau kandidat angka. QC kamera memerlukan ≥20 detik, ≥400 frame unik, ≥20 Hz, pencahayaan memadai, serta kesepakatan spektrum, autokorelasi, dan interval puncak. Sinyal periodik akibat gerakan dapat tetap lolos; ini belum merupakan validasi fisiologis. Baseline median dan deviasi robust dihitung dari 5–20 sesi valid sebelumnya pada modul sama. Perbedaan terhadap baseline tidak berarti abnormal secara klinis.</p></details>
           <details><summary>Privasi dan batas kemampuan</summary><p>Tidak ada jaringan analitik, akun, cloud, atau API AI berbayar. Riwayat di localStorage browser dapat terhapus saat data situs dibersihkan dan dapat diakses oleh siapa pun yang mengakses profil browser pada perangkat ini. Ekspor CSV/JSON untuk cadangan pribadi. Saat dipasang melalui HTTPS, file aplikasi dapat di-cache agar tetap berjalan offline.</p></details>
         </div>
       </section>
@@ -73,6 +74,8 @@
     <footer>MED-LAB ZERO · Research only · Tidak untuk diagnosis atau keputusan klinis.</footer>
   </div>
   <script src="./analysis.js"></script>
+  <script src="./pulse.js"></script>
+  <script src="./camera.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

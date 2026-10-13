@@ -1,35 +1,44 @@
 # MED-LAB ZERO
 
-**Free Android-only physiological signal research laboratory (NOT a medical device).**
+**Laboratorium riset sinyal berbasis HP Android, gratis, bukan alat medis.**
 
-## Start here — user only types `run`
-- [RUN hub / shared baton — Issue #1](https://github.com/yusufsalahamana/Medlab-zero/issues/1)
-- [Instructions for all AI rooms](AGENTS.md)
-- [RUN-ONLY protocol / role permissions](docs/RUN_ONLY.md)
-- [One-time setup for Director, Work Executor and Auditor](docs/ROOM_START.md)
-- [Scientific and safety gates](docs/RESEARCH_GATES.md)
+**[Buka aplikasi di Chrome Android](https://yusufsalahamana.github.io/Medlab-zero/)**
 
-## Prototype v0.1
-Source imported from the existing `medlab-zero-v0.1.zip`: five-trial reaction time, 15-second finger tapping, 12-second motion capture with basic QC, personal statistical baseline, local history and JSON/CSV export. No trained AI model or clinical interpretation is implemented. Camera/PPG is not implemented in M0.
+Tidak perlu akun, Termux, Python, laptop, API berbayar, atau perangkat tambahan. Repo sudah publik dan GitHub Pages aktif. Ringkasan eksperimen motorik disimpan di browser; frame/gelombang/kandidat kamera hanya di memori dan tidak diekspor. Aplikasi tidak mengunggah pengukuran.
 
-Open `index.html` for reaction/tapping, or run `python3 tools/serve.py` and open `http://127.0.0.1:8765/` on the same device. Motion availability requires a secure context, browser support and permission. PWA caching is registered on secure localhost HTTP or HTTPS; installation and actual offline use on Android remain unverified. See the [private Android test path](docs/ANDROID_TEST_PATH.md). Hosting must follow the approval policy below.
+## Eksperimen
+
+- Reaction Time: lima percobaan latensi sentuh.
+- Finger Tapping: ritme ketukan selama 15 detik.
+- Motion Lab: percepatan selama 12 detik, pemeriksaan laju sampel, spektrum eksploratif.
+- Camera Pulse Lab (M1, tersedia setelah PR diterima dan Pages diperbarui): 25 detik kamera belakang, ROI luminansi, QC, **experimental candidate pulse**. Angka hanya kandidat pola optik 45–180/menit, bukan denyut jantung tervalidasi. Tidak disimpan ke riwayat atau baseline.
+
+Modul motorik membandingkan 5–20 sesi valid terdahulu dengan median dan MAD. Perubahan statistik bukan indikator penyakit. Kamera tidak masuk perbandingan tersebut.
+
+Buka tab **Metode** untuk status konteks aman dan cache. Setelah **Cache aplikasi siap**, aplikasi dapat diuji dengan mematikan jaringan dan membuka ulang URL. Instalasi PWA, kamera/lampu, sensor Android dan akurasi pada HP nyata tetap **UNVERIFIED**. Lihat [kartu uji Android](docs/ANDROID_TEST_PATH.md) dan [metode/batas kamera](docs/M1_CAMERA.md).
+
+## Alur kerja `run`
+
+- [HUB dan baton — Issue #1](https://github.com/yusufsalahamana/Medlab-zero/issues/1)
+- [Instruksi semua room](AGENTS.md), [protokol peran](docs/RUN_ONLY.md), [setup room](docs/ROOM_START.md)
+- [Batas ilmiah](docs/RESEARCH_GATES.md)
+
+WORK satu-satunya penulis kode; Auditor memeriksa SHA tepat; Director menerima/merge setelah audit dan CI. Komunikasi melalui GitHub, tanpa pemindahan baton manual. Room yang tidak aktif tidak otomatis berjalan.
+
+## Pengujian untuk pengembang
 
 ```bash
 node --check app.js
 node --check analysis.js
+node --check pulse.js
+node --check camera.js
 node --check service-worker.js
 node --test tests/*.test.js
+python3 -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-See [M0 test evidence and limitations](docs/M0_TEST_REPORT.md). No public deployment or Android field-test PASS is claimed.
+CI juga menjalankan Chromium localhost dengan input sintetis dan cache offline (`tools/browser-smoke.cjs`), serta job terpisah yang membuka situs Pages publik dan aset yang benar-benar terdeploy (`tools/live-pages-smoke.cjs`). Tes situs live membuktikan versi publik saat job berjalan, bukan deployment branch PR. Mobile viewport/sumber sintetis tidak membuktikan penggunaan hardware Android.
 
-## Work queue
-- [#2 M0: source import and automated tests](https://github.com/yusufsalahamana/Medlab-zero/issues/2)
-- [#3 M0: Android tests + independent audit](https://github.com/yusufsalahamana/Medlab-zero/issues/3)
-- [#4 M1: camera PPG pulse research](https://github.com/yusufsalahamana/Medlab-zero/issues/4)
+[Catatan impor M0](docs/M0_TEST_REPORT.md) adalah bukti historis, termasuk jalur privat sebelum repo dipublikasikan. Server loopback dan paket CI tetap tersedia untuk pengembang, bukan syarat pengguna.
 
-## Rules
-One app-code writer at a time (WORK), GitHub Issues/PRs as inter-room communication, no repeated copy-pasting baton. Direct normal tasks via `run`, which makes each room re-read the latest HUB. An inactive ChatGPT room is **not** automatically started by other rooms. Routine non-sensitive repo work may proceed; no public deployment, access/privacy changes, paid spending or real patient data upload without specific approval.
-
-No medical diagnosis, blood pressure/glucose/SpO2 measurement, fetal reassurance or claims of validated AI. Record unverified tests as **UNVERIFIED**, not PASS. Local-only data by default.
-
+Tidak ada diagnosis, pengukuran tekanan darah/glukosa/SpO2, reassurance janin atau klaim AI tervalidasi. Jangan gunakan hasil untuk keputusan klinis. Jangan unggah pengukuran pribadi ke GitHub/Drive. Pengeluaran, perubahan akses dan unggahan data pasien memerlukan izin khusus.
