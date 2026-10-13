@@ -1,0 +1,19 @@
+name: Check MED-LAB ZERO
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check app.js
+      - run: node --check analysis.js
+      - run: node --check service-worker.js
+      - run: node --test tests/*.test.js
