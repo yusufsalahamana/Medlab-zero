@@ -1,0 +1,11 @@
+{
+  "name": "MED-LAB ZERO Research",
+  "short_name": "MED-LAB ZERO",
+  "description": "Eksperimen biomarker digital Android, tanpa diagnosis",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef3ef",
+  "theme_color": "#113d3e",
+  "icons": [{"src":"./icons/icon.svg","type":"image/svg+xml","sizes":"any","purpose":"any maskable"}]
+}
