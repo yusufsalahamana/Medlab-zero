@@ -21,10 +21,33 @@ const timeout=setTimeout(()=>{console.error('Browser smoke timed out');server.ki
   await page.goto(base);
   assert.equal(await page.evaluate(()=>window.isSecureContext),true);
   await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
-  await page.waitForFunction(()=>document.getElementById('pwa-status').textContent.includes('Cache aplikasi siap'));
+  await page.waitForFunction(()=>/Cache aplikasi siap|Worker aplikasi aktif/.test(document.getElementById('pwa-status').textContent));
   await page.locator('[data-panel="method"]').click();
   assert.match(await page.locator('#environment-status').textContent(),/Konteks aman/);
+  // Optional self-check: synthetic permissions/events/streams, never actual phone hardware.
+  await page.evaluate(()=>{window.probeCalls=0;navigator.mediaDevices.getUserMedia=async()=>{window.probeCalls++;throw new DOMException('synthetic denial','NotAllowedError');};});
+  assert.match(await page.locator('#device-camera-access').textContent(),/UNTESTED/);
+  await page.locator('#device-refresh').click();await page.waitForFunction(()=>document.getElementById('device-cache').textContent.startsWith('CACHE_READY'));
+  assert.equal(await page.evaluate(()=>window.probeCalls),0);
+  await page.evaluate(()=>{window.originalMotionPermission=DeviceMotionEvent.requestPermission;DeviceMotionEvent.requestPermission=async()=> 'denied';});
+  await page.locator('#device-motion').click();await page.waitForFunction(()=>document.getElementById('device-permission').textContent.startsWith('DENIED'));
+  assert.match(await page.locator('#device-samples').textContent(),/INSUFFICIENT_DATA/);
+  await page.evaluate(()=>{DeviceMotionEvent.requestPermission=window.originalMotionPermission;});
+  await page.locator('#device-motion').click();
+  await page.evaluate(()=>{window.probeMotionTimer=setInterval(()=>window.dispatchEvent(new DeviceMotionEvent('devicemotion',{acceleration:{x:1,y:0,z:0}})),20);});
+  await page.waitForFunction(()=>document.getElementById('device-samples').textContent.startsWith('SAMPLES_OBSERVED'),{},{timeout:5000});await page.evaluate(()=>clearInterval(window.probeMotionTimer));
+  await page.locator('#device-camera').click();await page.waitForFunction(()=>document.getElementById('device-camera-access').textContent.startsWith('DENIED'));
+  await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=()=>new Promise(resolve=>window.probeGrant=resolve);});
+  await page.locator('#device-camera').click();await page.locator('#device-cancel').click();
+  await page.evaluate(()=>{const c=document.createElement('canvas');c.width=32;c.height=32;const stream=c.captureStream(1);window.probeTrack=stream.getVideoTracks()[0];window.probeGrant(stream);});
+  await page.waitForFunction(()=>window.probeTrack.readyState==='ended');assert.match(await page.locator('#device-camera-access').textContent(),/CANCELLED/);
+  await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=async()=>{const c=document.createElement('canvas');c.width=32;c.height=32;const stream=c.captureStream(1);window.probeTrack=stream.getVideoTracks()[0];return stream;};});
+  await page.locator('#device-camera').click();await page.waitForFunction(()=>document.getElementById('device-camera-access').textContent.startsWith('ACCESS_OBSERVED'));
+  assert.match(await page.locator('#device-rear').textContent(),/UNVERIFIED/);assert.equal(await page.evaluate(()=>window.probeTrack.readyState),'ended');
+  await page.locator('#device-motion').click();
+
   await page.locator('[data-panel="experiments"]').click();
+  assert.match(await page.locator('#device-permission').textContent(),/CANCELLED/);assert.equal(await page.locator('#total-sessions').textContent(),'0');
   await page.locator('[data-open="reaction"]').click();
   await page.locator('#reaction-start').click();
   await page.locator('#reaction-target').click(); // Deliberately early input.
@@ -74,12 +97,13 @@ const timeout=setTimeout(()=>{console.error('Browser smoke timed out');server.ki
   await context.setOffline(true);
   await page.reload();
   assert.equal(await page.locator('#total-sessions').textContent(),'2');
+  await page.locator('[data-panel="method"]').click();await page.locator('#device-refresh').click();await page.waitForFunction(()=>document.getElementById('device-cache').textContent.startsWith('CACHE_READY'));assert.match(await page.locator('#device-network').textContent(),/OFFLINE_REPORTED/);
   await page.locator('[data-panel="history"]').click();
   page.once('dialog',d=>d.accept());await page.locator('#delete-history').click();
   assert.match(await page.locator('#history-status').textContent(),/sudah dihapus/);
   await page.reload();assert.equal(await page.locator('#total-sessions').textContent(),'0');
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  console.log('BROWSER PASS: Chromium mobile viewport; secure loopback, reaction/tapping, denied camera + synthetic canvas optical capture/QC/no persistence, local reload/export/delete failure+retry, offline reload, no external page requests. Android hardware/install UNVERIFIED.');
+  console.log('BROWSER PASS: Chromium mobile viewport; secure loopback, optional self-check synthetic permissions/sampling/camera late-stop/cache+offline, reaction/tapping, denied camera + synthetic canvas optical capture/QC/no persistence, local reload/export/delete failure+retry, offline reload, no external page requests. Android hardware/install UNVERIFIED.');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{
   clearTimeout(timeout);if(browser)await browser.close();server.kill();
 });

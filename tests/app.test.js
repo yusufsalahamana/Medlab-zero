@@ -41,8 +41,8 @@ function app(options={}) {
     addEventListener:(name,fn)=>documentEvents.set(name,fn)};
   const window={screen:{width:412,height:915},devicePixelRatio:1,isSecureContext:options.secure!==false,addEventListener:(name,fn)=>windowEvents.set(name,fn),removeEventListener:(name,fn)=>{if(windowEvents.get(name)===fn)windowEvents.delete(name);}};
   function schedule(fn,ms,interval=false){const id=++nextTimer;timers.set(id,{fn,at:now+ms,interval:interval?ms:0});return id;}
-  const navigator={onLine:true,userAgent:'Synthetic Browser'};if(options.serviceWorker)navigator.serviceWorker=options.serviceWorker;
-  const context={document,window,navigator,location:{protocol:options.protocol||'https:'},MedMath,MedReflex:require('../reflex.js'),Date:class extends Date{static now(){return 100000+now;}},MedPulse:require('../pulse.js'),MedCamera:options.camera,
+  const navigator={onLine:true,userAgent:'Synthetic Browser',mediaDevices:options.media};if(options.serviceWorker)navigator.serviceWorker=options.serviceWorker;
+  const context={document,window,navigator,location:{protocol:options.protocol||'https:'},MedMath,MedReflex:require('../reflex.js'),MedDeviceCheck:require('../device-check.js'),Date:class extends Date{static now(){return 100000+now;}},MedPulse:require('../pulse.js'),MedCamera:options.camera,
     Math:Object.assign(Object.create(Math),{random:()=>0}),performance:{now:()=>now},localStorage:{getItem:k=>data.get(k),setItem:(k,v)=>{if(options.storageFails)throw Error('quota');data.set(k,v);},removeItem:k=>{if(options.deleteFails)throw Error('denied');data.delete(k);}},
     setTimeout:(fn,ms)=>schedule(fn,ms),setInterval:(fn,ms)=>schedule(fn,ms,true),clearTimeout:id=>timers.delete(id),clearInterval:id=>timers.delete(id),
     requestAnimationFrame:fn=>frames.push(fn),Blob,URL:{createObjectURL:blob=>{blobs.push(blob);return 'blob:synthetic';},revokeObjectURL(){}},confirm:()=>options.confirmDelete!==false};
@@ -179,7 +179,7 @@ test('PWA registers on secure HTTPS/loopback HTTP, but not file URLs or insecure
     const a=app({protocol,secure,serviceWorker:{register:async()=>{calls++;},ready:Promise.resolve({})}});
     await new Promise(resolve=>setImmediate(resolve));
     assert.equal(calls,expected);
-    assert.match(a.nodes.get('pwa-status').textContent,expected?/Cache aplikasi siap/:/tidak tersedia/);
+    assert.match(a.nodes.get('pwa-status').textContent,expected?/Worker aplikasi aktif/:/tidak tersedia/);
   }
 });
 
@@ -243,4 +243,15 @@ test('6 guided sessions expose per-feature personal comparison after reload; no 
   const a=app({motion:{}});
   for(let i=0;i<6;i++){startReflex(a);guidedReaction(a);guidedTapping(a);await guidedMotion(a);const text=a.nodes.get('workspace-results').children.map(e=>e.textContent).join(' ');if(i<5)assert.match(text,new RegExp(i+'/5 sesi'));else {assert.match(text,/Perbandingan 5 sesi/);assert.match(text,/MAD/);assert.match(text,/Latensi sentuh aplikasi/);}assert.equal(a.sessions().length,i+1);}
   assert.equal(a.nodes.get('active-baselines').textContent,1);const b=app({storage:Object.fromEntries(a.data)});assert.equal(b.nodes.get('total-sessions').textContent,6);assert.equal(b.nodes.get('active-baselines').textContent,1);
+});
+
+
+test('device self-check UI starts no hardware automatically; background cancels probe with no active experiment',async()=>{
+  let permissions=0,media=0;const a=app({motion:{requestPermission:async()=>{permissions++;return 'granted';}},media:{getUserMedia:async()=>{media++;throw Object.assign(Error(),{name:'NotAllowedError'});}}});
+  assert.equal(permissions,0);assert.equal(media,0);assert.match(a.nodes.get('device-permission').textContent,/UNTESTED/);await a.click('device-refresh');assert.equal(permissions,0);assert.equal(media,0);
+  await a.click('device-motion');assert.equal(permissions,1);assert.equal(a.windowEvents.has('devicemotion'),true);a.background();assert.equal(a.windowEvents.has('devicemotion'),false);assert.equal(a.timers.size,0);assert.match(a.nodes.get('device-permission').textContent,/CANCELLED/);assert.deepEqual(a.sessions(),[]);
+});
+test('device camera denial and late stream after leaving Metode cannot persist or keep tracks',async()=>{
+  let grant,stops=0;const a=app({media:{getUserMedia:()=>new Promise(resolve=>grant=resolve)}});const task=a.click('device-camera');a.open('reaction');const track={stop(){stops++;}};grant({getTracks:()=>[track],getVideoTracks:()=>[track]});await task;assert.equal(stops,1);assert.match(a.nodes.get('device-camera-access').textContent,/CANCELLED/);assert.deepEqual(a.sessions(),[]);
+  const b=app({media:{getUserMedia:async()=>{throw Object.assign(Error(),{name:'NotAllowedError'});}}});await b.click('device-camera');assert.match(b.nodes.get('device-camera-access').textContent,/DENIED/);assert.equal(b.timers.size,0);assert.deepEqual(b.sessions(),[]);
 });

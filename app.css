@@ -8,3 +8,5 @@
 #reflex-hand{display:block;margin:8px 0 12px;padding:12px;font:inherit;min-width:180px;border-radius:8px;border:1px solid #b8d1c8;background:white;color:#113d3e;}
 .reflex-confirm{display:block;margin:12px 0 18px;line-height:1.6;}
 .reflex-confirm input{width:20px;height:20px;vertical-align:middle;margin-right:8px;}
+
+.device-status dt{font-weight:700;margin-top:12px;}.device-status dd{margin:4px 0 10px;overflow-wrap:anywhere;line-height:1.6;}

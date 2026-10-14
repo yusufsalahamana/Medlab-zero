@@ -6,7 +6,7 @@
   const labels={reaction:'Reaction Time',tapping:'Finger Tapping',tremor:'Motion Lab',pulse:'Camera Pulse Lab',reflex:'ReflexPrint'};
   const primary={reaction:'medianMs',tapping:'tapsPerSec',tremor:'rmsMps2'};
   const fmt=(x,n=1)=>Number.isFinite(x)?Number(x).toFixed(n):'—';
-  const state={run:null, timers:[],motionListener:null,lastRaw:null,camera:null,guided:null};
+  const state={run:null, timers:[],motionListener:null,lastRaw:null,camera:null,guided:null,checker:null};
   let history=[];
   try { history=JSON.parse(localStorage.getItem(STORAGE)||'[]'); if(!Array.isArray(history))history=[]; }
   catch(err) { history=[]; }
@@ -14,7 +14,7 @@
   function later(fn,ms){const t=setTimeout(fn,ms);state.timers.push(t);return t;}
   function repeat(fn,ms){const t=setInterval(fn,ms);state.timers.push({interval:t});return t;}
   function clearTimers(){for(const t of state.timers){if(typeof t==='object')clearInterval(t.interval);else clearTimeout(t);}state.timers=[];}
-  function tearDown(){if(state.camera)state.camera.stop();state.camera=null;clearTimers();if(state.motionListener)window.removeEventListener('devicemotion',state.motionListener);state.motionListener=null;state.run=null;state.guided=null;state.lastRaw=null;}
+  function tearDown(){if(state.checker)state.checker.cancel();if(state.camera)state.camera.stop();state.camera=null;clearTimers();if(state.motionListener)window.removeEventListener('devicemotion',state.motionListener);state.motionListener=null;state.run=null;state.guided=null;state.lastRaw=null;}
   function setHTML(node,html){node.innerHTML=html;}
   function metric(k,v){return `<div class="metric"><span>${v}</span><small>${k}</small></div>`;}
   function showPanel(name){document.querySelectorAll('.panel').forEach(el=>el.classList.toggle('active',el.id===name));document.querySelectorAll('.tab').forEach(el=>{const active=el.dataset.panel===name;el.classList.toggle('active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});$('workspace').classList.add('hidden');tearDown();if(name==='history')renderHistory();}
@@ -178,7 +178,7 @@
   document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
   document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>open(b.dataset.open)));
   $('close-exp').addEventListener('click',()=>showPanel('experiments'));
-  document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.run){tearDown();setStatus('Eksperimen dibatalkan karena aplikasi masuk latar belakang. Buka kembali eksperimen untuk mengulang.');}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&(state.run||state.checker?.active)){tearDown();setStatus('Eksperimen dibatalkan karena aplikasi masuk latar belakang. Buka kembali eksperimen untuk mengulang.');}});
   window.addEventListener('pagehide',tearDown);
   $('export-json').addEventListener('click',exportJSON);$('export-csv').addEventListener('click',exportCSV);
   $('delete-history').addEventListener('click',()=>{
@@ -186,13 +186,19 @@
     try{localStorage.removeItem(STORAGE);}catch(err){$('history-status').textContent='Gagal menghapus riwayat lokal. Data tetap tersimpan di browser ini. Coba lagi atau hapus data situs melalui pengaturan browser.';return;}
     history=[];renderSummary();renderHistory();$('history-status').textContent='Riwayat lokal sudah dihapus.';
   });
+  const deviceRows={secure:'device-secure',motion:'device-motion-api',permission:'device-permission',samples:'device-samples',cameraApi:'device-camera-api',camera:'device-camera-access',rear:'device-rear',cache:'device-cache',network:'device-network'};
+  state.checker=new MedDeviceCheck.Probe({secure:window.isSecureContext,protocol:location.protocol,motion:typeof DeviceMotionEvent==='undefined'?null:DeviceMotionEvent,media:navigator.mediaDevices,worker:navigator.serviceWorker,caches:window.caches,base:location.href,online:()=>navigator.onLine,listen:f=>window.addEventListener('devicemotion',f),unlisten:f=>window.removeEventListener('devicemotion',f),clock:()=>performance.now(),timer:(f,ms)=>setTimeout(f,ms),clear:id=>clearTimeout(id),status:(key,result)=>{$(deviceRows[key]).textContent=result.code+' · '+result.text;}});
+  $('device-refresh').addEventListener('click',()=>state.checker.refresh());
+  $('device-motion').addEventListener('click',()=>state.checker.probeMotion());
+  $('device-camera').addEventListener('click',()=>state.checker.probeCamera());
+  $('device-cancel').addEventListener('click',()=>state.checker.cancel());
   renderSummary();renderHistory();
   $('offline-chip').textContent=navigator.onLine?'LOCAL ONLY':'OFFLINE MODE';
-  window.addEventListener('online',()=>$('offline-chip').textContent='LOCAL ONLY');window.addEventListener('offline',()=>$('offline-chip').textContent='OFFLINE MODE');
+  window.addEventListener('online',()=>{$('offline-chip').textContent='LOCAL ONLY';state.checker.staticStatus();});window.addEventListener('offline',()=>{$('offline-chip').textContent='OFFLINE MODE';state.checker.staticStatus();});
   $('environment-status').textContent=`Konteks ${window.isSecureContext?'aman':'tidak aman'} · API gerak ${typeof DeviceMotionEvent==='undefined'?'tidak tersedia':'tersedia (sensor belum diuji)'}`;
   const pwa=$('pwa-status');
   if('serviceWorker' in navigator && window.isSecureContext && ['https:','http:'].includes(location.protocol)){
     pwa.textContent='Menyiapkan cache offline…';
-    navigator.serviceWorker.register('./service-worker.js').then(()=>navigator.serviceWorker.ready).then(()=>{pwa.textContent='Cache aplikasi siap. Uji buka ulang tanpa jaringan; instalasi tetap perlu diperiksa di Chrome.';}).catch(()=>{pwa.textContent='Cache offline gagal disiapkan. Muat ulang saat server lokal/HTTPS berjalan.';});
+    navigator.serviceWorker.register('./service-worker.js').then(()=>navigator.serviceWorker.ready).then(()=>{pwa.textContent='Worker aplikasi aktif. Tap Periksa perangkat & cache untuk memastikan aset lengkap; offline relaunch dan instalasi tetap perlu diuji.';}).catch(()=>{pwa.textContent='Cache offline gagal disiapkan. Muat ulang saat server lokal/HTTPS berjalan.';});
   }else pwa.textContent='Cache offline tidak tersedia di konteks ini. Gunakan HTTPS atau server localhost di HP.';
 })();
